@@ -6,7 +6,7 @@ module Events =
       Payer: string
       Amount: decimal }
 
-  type Payment = { Amount: decimal }
+  type Payment = { PaymentId: string; Amount: decimal }
 
   type EmailReceipt =
     { IdempotencyKey: string
@@ -31,6 +31,7 @@ module Fold =
       InvoiceNumber: int
       Payer: string
       EmailedTo: Set<string>
+      Payments: Set<string>
       AmountPaid: decimal }
 
   type State =
@@ -50,6 +51,7 @@ module Fold =
             InvoiceNumber = data.InvoiceNumber
             Payer = data.Payer
             EmailedTo = Set.empty
+            Payments = Set.empty
             AmountPaid = 0m }
       // We're guaranteed to not have two InvoiceRaised events and that it is the first event in the stream
       | e -> failwithf "Unexpected %A" e
@@ -57,7 +59,7 @@ module Fold =
       match event with
       | InvoiceRaised _ as e -> failwith "Unexpected %A"
       | InvoiceEmailed r -> Raised { state with EmailedTo = state.EmailedTo |> Set.add r.Recipient }
-      | PaymentReceived p -> Raised { state with AmountPaid = state.AmountPaid + p.Amount }
+      | PaymentReceived p -> Raised { state with AmountPaid = state.AmountPaid + p.Amount; Payments = state.Payments |> Set.add p.PaymentId }
       | InvoiceFinalized -> Finalized state
     // A Finalized invoice is terminal. No further events should be appended
     | Finalized _ -> failwithf "Unexpected %A" event
@@ -91,8 +93,9 @@ module Decisions =
     | Fold.Initial -> failwith "Invoice not found"
     | Fold.Finalized _ -> failwith "Invoice is finalized"
 
-  let recordPayment data state =
+  let recordPayment (data: Events.Payment) state =
     match state with
+    | Fold.Raised state when state.Payments |> Set.contains data.PaymentId -> []
     | Fold.Raised _ -> [ Events.PaymentReceived data ]
     | Fold.Finalized _ -> failwith "Invoice is finalized"
     | Fold.Initial -> failwith "Invoice not found"
