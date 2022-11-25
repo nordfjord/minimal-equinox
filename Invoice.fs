@@ -110,8 +110,8 @@ type InvoiceId = Guid<invoiceId>
 and [<Measure>] invoiceId
 
 module InvoiceId =
-  let inline parseGuid (g: Guid) : InvoiceId = %g
-  let inline parse (s: string) = Guid.Parse s |> parseGuid
+  let inline ofGuid (g: Guid) : InvoiceId = %g
+  let inline parse (s: string) = Guid.Parse s |> ofGuid
   let inline toGuid (id: InvoiceId) : Guid = %id
   let inline toString (id: InvoiceId) = (toGuid id).ToString("N")
 

@@ -38,7 +38,7 @@ app.MapPost(
   "/",
   Func<_, _>(fun body ->
     task {
-      let id = Guid.NewGuid() |> Invoice.InvoiceId.parseGuid
+      let id = Guid.NewGuid() |> Invoice.InvoiceId.ofGuid
       do! service.Raise(id, body)
       return id
     })
