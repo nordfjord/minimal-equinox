@@ -1,11 +1,16 @@
 module Invoice
 
 module Events =
-  type InvoiceRaised = { InvoiceNumber: int; Payer: string; Amount: decimal}
+  type InvoiceRaised =
+    { InvoiceNumber: int
+      Payer: string
+      Amount: decimal }
+
   type Payment = { Amount: decimal }
-  type EmailReceipt =  
-    { IdempotencyKey: string; 
-      Recipient: string; 
+
+  type EmailReceipt =
+    { IdempotencyKey: string
+      Recipient: string
       SentAt: System.DateTimeOffset }
 
   type Event =
@@ -20,30 +25,44 @@ module Events =
 
 module Fold =
   open Events
-  
-  type InvoiceState = 
-    { Amount: decimal
-      InvoiceNumber: int 
-      EmailedTo: Set<string>
-      AmountPaid: decimal
-      Finalized: bool }
 
-  type State = 
-    | Initial 
-    | Raised of InvoiceState 
-  
+  type InvoiceState =
+    { Amount: decimal
+      InvoiceNumber: int
+      Payer: string
+      EmailedTo: Set<string>
+      AmountPaid: decimal }
+
+  type State =
+    | Initial
+    | Raised of InvoiceState
+    | Finalized of InvoiceState
+
   let initial = Initial
 
   let evolve state event =
-    match state, event with
-    | Initial, InvoiceRaised data -> 
-      Raised { Amount = data.Amount; InvoiceNumber = data.InvoiceNumber; EmailedTo = Set.empty; AmountPaid = 0m; Finalized = false}
-    | Raised s, InvoiceEmailed r -> Raised { s with EmailedTo = s.EmailedTo |> Set.add r.Recipient }
-    | Raised s, PaymentReceived p -> Raised { s with AmountPaid = s.AmountPaid + p.Amount }
-    | Raised s, InvoiceFinalized -> Raised { s with Finalized = true }
-    | _ -> state
-    
-  let fold : State -> Event seq -> State = Seq.fold evolve
+    match state with
+    | Initial ->
+      match event with
+      | InvoiceRaised data ->
+        Raised
+          { Amount = data.Amount
+            InvoiceNumber = data.InvoiceNumber
+            Payer = data.Payer
+            EmailedTo = Set.empty
+            AmountPaid = 0m }
+      // We're guaranteed to not have two InvoiceRaised events and that it is the first event in the stream
+      | e -> failwithf "Unexpected %A" e
+    | Raised state ->
+      match event with
+      | InvoiceRaised _ as e -> failwith "Unexpected %A"
+      | InvoiceEmailed r -> Raised { state with EmailedTo = state.EmailedTo |> Set.add r.Recipient }
+      | PaymentReceived p -> Raised { state with AmountPaid = state.AmountPaid + p.Amount }
+      | InvoiceFinalized -> Finalized state
+    // A Finalized invoice is terminal. No further events should be appended
+    | Finalized _ -> failwithf "Unexpected %A" event
+
+  let fold: State -> Event seq -> State = Seq.fold evolve
 
 type Command =
   | RaiseInvoice of Events.InvoiceRaised
@@ -51,21 +70,38 @@ type Command =
   | RecordPayment of Events.Payment
   | Finalize
 
-let decide command state =
-  match state, command with
-  | Fold.Initial, RaiseInvoice data -> [ Events.InvoiceRaised data ]
-  | _, RaiseInvoice _ -> []
+module Decisions =
+  let raiseInvoice data state =
+    match state with
+    | Fold.Initial -> [ Events.InvoiceRaised data ]
+    // This is known as an idempotency check. We could be receiving the same
+    // command due to a retry, in which case it is not considered a failure
+    // since the Fold will already be in the state that this command should put it in
+    | Fold.Raised state when state.Amount = data.Amount && state.Payer = data.Payer -> []
+    | Fold.Raised _ -> failwith "Invoice is already raised"
+    | Fold.Finalized _ -> failwith "Invoice is finalized"
 
-  | Fold.Raised state, RecordEmailReceipt data 
-      when not (state.EmailedTo |> Set.contains data.Recipient) -> 
-        [Events.InvoiceEmailed data]
-  | _, RecordEmailReceipt _ -> []
+  let private canSendToRecipientNow recipient (state: Fold.InvoiceState) =
+    not (state.EmailedTo |> Set.contains recipient)
 
-  | Fold.Raised state, RecordPayment data -> [ Events.PaymentReceived data ]
-  | _, RecordPayment _ -> []
+  let recordEmailReceipt (data: Events.EmailReceipt) state =
+    match state with
+    | Fold.Raised state when canSendToRecipientNow data.Recipient state -> [ Events.InvoiceEmailed data ]
+    | Fold.Raised _ -> []
+    | Fold.Initial -> failwith "Invoice not found"
+    | Fold.Finalized _ -> failwith "Invoice is finalized"
 
-  | Fold.Raised state, Finalize -> [ Events.InvoiceFinalized ]
-  | _, Finalize -> []
+  let recordPayment data state =
+    match state with
+    | Fold.Raised _ -> [ Events.PaymentReceived data ]
+    | Fold.Finalized _ -> failwith "Invoice is finalized"
+    | Fold.Initial -> failwith "Invoice not found"
+
+  let finalize state =
+    match state with
+    | Fold.Finalized _ -> []
+    | Fold.Raised _ -> [ Events.InvoiceFinalized ]
+    | Fold.Initial -> failwith "Invoice not found"
 
 open FSharp.UMX
 open System
@@ -79,30 +115,49 @@ module InvoiceId =
   let inline toGuid (id: InvoiceId) : Guid = %id
   let inline toString (id: InvoiceId) = (toGuid id).ToString("N")
 
+[<Literal>]
 let Category = "Invoice"
+
 let streamId = Equinox.StreamId.gen InvoiceId.toString
+
+type InvoiceModel =
+  { InvoiceNumber: int
+    Amount: decimal
+    Payer: string
+    EmailedTo: string array
+    Finalized: bool }
+
+module InvoiceModel =
+  let fromState finalized (state: Fold.InvoiceState) =
+    { InvoiceNumber = state.InvoiceNumber
+      Amount = state.Amount
+      Payer = state.Payer
+      EmailedTo = state.EmailedTo |> Set.toArray
+      Finalized = finalized }
 
 type Service internal (resolve: InvoiceId -> Equinox.Decider<Events.Event, Fold.State>) =
   member _.Raise(id, data) =
     let decider = resolve id
-    decider.Transact(decide (RaiseInvoice data))
-    
+    decider.Transact(Decisions.raiseInvoice data)
+
   member _.RecordEmailReceipt(id, data) =
     let decider = resolve id
-    decider.Transact(decide (RecordEmailReceipt data))
-    
+    decider.Transact(Decisions.recordEmailReceipt data)
+
   member _.RecordPayment(id, data) =
     let decider = resolve id
-    decider.Transact(decide (RecordPayment data))
-    
+    decider.Transact(Decisions.recordPayment data)
+
   member _.Finalize(id) =
     let decider = resolve id
-    decider.Transact(decide Finalize)
+    decider.Transact(Decisions.finalize)
 
   member _.GetInvoice(id) =
     let decider = resolve id
-    decider.Query(function Fold.Raised x -> Some x | _ -> None)
 
+    decider.Query (function
+      | Fold.Initial -> None
+      | Fold.Raised invoice -> Some(InvoiceModel.fromState false invoice)
+      | Fold.Finalized invoice -> Some(InvoiceModel.fromState true invoice))
 
 let create resolve = Service(streamId >> resolve Category)
-

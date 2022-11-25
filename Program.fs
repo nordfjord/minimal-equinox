@@ -34,28 +34,38 @@ let service =
 let builder = WebApplication.CreateBuilder()
 let app = builder.Build()
 
-app.MapPost("/", Func<_, _>(fun body -> task {
-  let id = Guid.NewGuid() |> Invoice.InvoiceId.parseGuid
-  do! service.Raise(id, body)
-  return id
-}))
+app.MapPost(
+  "/",
+  Func<_, _>(fun body ->
+    task {
+      let id = Guid.NewGuid() |> Invoice.InvoiceId.parseGuid
+      do! service.Raise(id, body)
+      return id
+    })
+)
 |> ignore
 
-app.MapPost("/{id}/finalize", Func<_, _>(fun id -> task {
-  do! service.Finalize(id)
-  return "OK"
-}))
+app.MapPost(
+  "/{id}/finalize",
+  Func<_, _>(fun id ->
+    task {
+      do! service.Finalize(id)
+      return "OK"
+    })
+)
 |> ignore
 
-app.MapPost("/{id}/record-payment", Func<_, _, _>(fun id payment -> task {
-  do! service.RecordPayment(id, payment)
-  return "OK"
-}))
+app.MapPost(
+  "/{id}/record-payment",
+  Func<_, _, _>(fun id payment ->
+    task {
+      do! service.RecordPayment(id, payment)
+      return "OK"
+    })
+)
 |> ignore
 
-app.MapGet("/{id}", Func<_, _>(fun id -> task { 
-  return! service.GetInvoice(id)
-}))
+app.MapGet("/{id}", Func<_, _>(fun id -> task { return! service.GetInvoice(id) }))
 |> ignore
 
 app.Run()
