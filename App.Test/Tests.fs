@@ -8,10 +8,8 @@ open FsCodec.Core
 [<Property>]
 let ``The event codec round-trips cleanly`` event =
   let encoded = Events.codec.Encode((), event)
-
-  let decoded =
-    Events.codec.TryDecode(TimelineEvent.Create(0L, encoded.EventType, encoded.Data))
-
+  let saved = TimelineEvent.Create(0L, encoded.EventType, encoded.Data)
+  let decoded = Events.codec.TryDecode(saved)
   test <@ ValueSome event = decoded @>
 
 let (=>) events interpret =
@@ -24,7 +22,7 @@ let ``Raising an invoice`` data =
   test <@ [] => Decisions.raiseInvoice data = [ InvoiceRaised data ] @>
   // test the idempotency
   test <@ [ InvoiceRaised data ] => Decisions.raiseInvoice data = [] @>
-  // A finalized invoice cannot be raised
+  // A finalized invoice will throw
   raises <@ [ InvoiceRaised data; InvoiceFinalized ] => Decisions.raiseInvoice data @>
 
 [<Property>]

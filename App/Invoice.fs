@@ -57,7 +57,7 @@ module Fold =
       | e -> failwithf "Unexpected %A" e
     | Raised state ->
       match event with
-      | InvoiceRaised _ as e -> failwith "Unexpected %A"
+      | InvoiceRaised _ as e -> failwithf "Unexpected %A" e
       | InvoiceEmailed r -> Raised { state with EmailedTo = state.EmailedTo |> Set.add r.Recipient }
       | PaymentReceived p ->
         Raised
@@ -69,12 +69,6 @@ module Fold =
     | Finalized _ -> failwithf "Unexpected %A" event
 
   let fold: State -> Event seq -> State = Seq.fold evolve
-
-type Command =
-  | RaiseInvoice of Events.InvoiceRaised
-  | RecordEmailReceipt of Events.EmailReceipt
-  | RecordPayment of Events.Payment
-  | Finalize
 
 module Decisions =
   let raiseInvoice data state =
@@ -92,7 +86,8 @@ module Decisions =
 
   let recordEmailReceipt (data: Events.EmailReceipt) state =
     match state with
-    | Fold.Raised state when not (hasSentEmailToRecipient data.Recipient state) -> [ Events.InvoiceEmailed data ]
+    | Fold.Raised state when not (hasSentEmailToRecipient data.Recipient state) ->
+      [ Events.InvoiceEmailed data ]
     | Fold.Raised _ -> []
     | Fold.Initial -> failwith "Invoice not found"
     | Fold.Finalized _ -> failwith "Invoice is finalized"
@@ -120,6 +115,8 @@ module InvoiceId =
   let inline ofGuid (g: Guid) : InvoiceId = %g
   let inline parse (s: string) = Guid.Parse s |> ofGuid
   let inline toGuid (id: InvoiceId) : Guid = %id
+  // We choose the dashless N format to make the distinct parts of the stream's ID
+  // easier for humans to read
   let inline toString (id: InvoiceId) = (toGuid id).ToString("N")
 
 [<Literal>]
@@ -142,6 +139,13 @@ module InvoiceModel =
       EmailedTo = state.EmailedTo |> Set.toArray
       Finalized = finalized }
 
+module Queries =
+  let summary =
+    function
+    | Fold.Initial -> None
+    | Fold.Raised invoice -> Some(InvoiceModel.fromState false invoice)
+    | Fold.Finalized invoice -> Some(InvoiceModel.fromState true invoice)
+
 type Service internal (resolve: InvoiceId -> Equinox.Decider<Events.Event, Fold.State>) =
   member _.Raise(id, data) =
     let decider = resolve id
@@ -159,12 +163,8 @@ type Service internal (resolve: InvoiceId -> Equinox.Decider<Events.Event, Fold.
     let decider = resolve id
     decider.Transact(Decisions.finalize)
 
-  member _.GetInvoice(id) =
+  member _.ReadInvoice(id) =
     let decider = resolve id
-
-    decider.Query (function
-      | Fold.Initial -> None
-      | Fold.Raised invoice -> Some(InvoiceModel.fromState false invoice)
-      | Fold.Finalized invoice -> Some(InvoiceModel.fromState true invoice))
+    decider.Query(Queries.summary)
 
 let create resolve = Service(streamId >> resolve Category)
