@@ -59,7 +59,11 @@ module Fold =
       match event with
       | InvoiceRaised _ as e -> failwith "Unexpected %A"
       | InvoiceEmailed r -> Raised { state with EmailedTo = state.EmailedTo |> Set.add r.Recipient }
-      | PaymentReceived p -> Raised { state with AmountPaid = state.AmountPaid + p.Amount; Payments = state.Payments |> Set.add p.PaymentId }
+      | PaymentReceived p ->
+        Raised
+          { state with
+              AmountPaid = state.AmountPaid + p.Amount
+              Payments = state.Payments |> Set.add p.PaymentId }
       | InvoiceFinalized -> Finalized state
     // A Finalized invoice is terminal. No further events should be appended
     | Finalized _ -> failwithf "Unexpected %A" event
@@ -83,12 +87,12 @@ module Decisions =
     | Fold.Raised _ -> failwith "Invoice is already raised"
     | Fold.Finalized _ -> failwith "Invoice is finalized"
 
-  let private canSendToRecipientNow recipient (state: Fold.InvoiceState) =
-    not (state.EmailedTo |> Set.contains recipient)
+  let private hasSentEmailToRecipient recipient (state: Fold.InvoiceState) =
+    state.EmailedTo |> Set.contains recipient
 
   let recordEmailReceipt (data: Events.EmailReceipt) state =
     match state with
-    | Fold.Raised state when canSendToRecipientNow data.Recipient state -> [ Events.InvoiceEmailed data ]
+    | Fold.Raised state when not (hasSentEmailToRecipient data.Recipient state) -> [ Events.InvoiceEmailed data ]
     | Fold.Raised _ -> []
     | Fold.Initial -> failwith "Invoice not found"
     | Fold.Finalized _ -> failwith "Invoice is finalized"
