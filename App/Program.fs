@@ -63,7 +63,7 @@ type Services() =
   static member HostedReactor(context) =
     let reactorService = Services.InvoiceNumberReactorService(context)
     let checkpointService = Services.CheckpointService(context)
-    new HostedReactor.HostedReactor(readUrl, log, reactorService, checkpointService)
+    new InvoiceNumberReactor.HostedService(readUrl, log, reactorService, checkpointService)
 
 let builder = WebApplication.CreateBuilder()
 builder.Services.AddHostedService(fun _ -> Services.HostedReactor(context)) |> ignore

@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <Compile Include="CheckpointStore.fs" />
-    <Compile Include="HostedReactor.fs" />
+    <Compile Include="InvoiceNumberReactor.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
