@@ -1,9 +1,7 @@
 module Invoice
 
 module Events =
-  type InvoiceRaised =
-    { Payer: string
-      Amount: decimal }
+  type InvoiceRaised = { Payer: string; Amount: decimal }
 
   type Payment = { PaymentId: string; Amount: decimal }
 
@@ -84,13 +82,16 @@ module Decisions =
     | Fold.Raised _ -> failwith "Invoice is already raised"
     | Fold.Finalized _ -> failwith "Invoice is finalized"
 
-  let number invoiceNumber state =
-    match state with
-    | Fold.Raised { InvoiceNumber = None } -> [Events.InvoiceNumbered {InvoiceNumber = invoiceNumber}]
-    | Fold.Raised { InvoiceNumber = Some n } when n = invoiceNumber -> []
-    | Fold.Raised { InvoiceNumber = Some n } -> failwithf "Invoice is already numbered with a different number %d" n
-    | Fold.Initial -> failwith "Invoice not found"
-    | Fold.Finalized _ -> failwith "Invoice is finalized"
+  let number reserveNumber state =
+    async {
+      match state with
+      | Fold.Raised { InvoiceNumber = None } ->
+        let! n = reserveNumber ()
+        return (), [ Events.InvoiceNumbered { InvoiceNumber = n } ]
+      | Fold.Raised { InvoiceNumber = Some _ } -> return (), []
+      | Fold.Initial -> return failwith "Invoice not found"
+      | Fold.Finalized _ -> return failwith "Invoice is finalized"
+    }
 
   let private hasSentEmailToRecipient recipient (state: Fold.InvoiceState) =
     state.EmailedTo |> Set.contains recipient
@@ -163,9 +164,9 @@ type Service internal (resolve: InvoiceId -> Equinox.Decider<Events.Event, Fold.
     let decider = resolve id
     decider.Transact(Decisions.raiseInvoice data)
 
-  member _.Number(id, data) =
+  member _.Number(id, reserveNumber) =
     let decider = resolve id
-    decider.Transact(Decisions.number data)
+    decider.TransactAsync(Decisions.number reserveNumber)
 
   member _.RecordEmailReceipt(id, data) =
     let decider = resolve id

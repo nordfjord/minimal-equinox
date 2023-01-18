@@ -7,8 +7,8 @@ type Service(numberService: InvoiceNumbering.Service, invoiceService: Invoice.Se
       | FsCodec.StreamName.CategoryAndId(Invoice.Category, Invoice.InvoiceId.Parse invoiceId) ->
         match Invoice.Events.codec.TryDecode event with
         | ValueSome(Invoice.Events.InvoiceRaised _) ->
-          let! reservedNumber = numberService.ReserveNext(invoiceId)
-          do! invoiceService.Number(invoiceId, reservedNumber)
+          let reserve () = numberService.ReserveNext invoiceId
+          do! invoiceService.Number(invoiceId, reserve)
         | _ -> ()
       | _ -> ()
     }
