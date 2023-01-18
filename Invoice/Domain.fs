@@ -1,9 +1,10 @@
 module Invoice
 
+open TypeShape.Core.Core
+
 module Events =
   type InvoiceRaised =
-    { InvoiceNumber: int
-      Payer: string
+    { Payer: string
       Amount: decimal }
 
   type Payment = { PaymentId: string; Amount: decimal }
@@ -13,8 +14,11 @@ module Events =
       Recipient: string
       SentAt: System.DateTimeOffset }
 
+  type Numbered = { InvoiceNumber: int }
+
   type Event =
     | InvoiceRaised of InvoiceRaised
+    | InvoiceNumbered of Numbered
     | InvoiceEmailed of EmailReceipt
     | PaymentReceived of Payment
     | InvoiceFinalized
@@ -28,7 +32,7 @@ module Fold =
 
   type InvoiceState =
     { Amount: decimal
-      InvoiceNumber: int
+      InvoiceNumber: int option
       Payer: string
       EmailedTo: Set<string>
       Payments: Set<string>
@@ -48,7 +52,7 @@ module Fold =
       | InvoiceRaised data ->
         Raised
           { Amount = data.Amount
-            InvoiceNumber = data.InvoiceNumber
+            InvoiceNumber = None
             Payer = data.Payer
             EmailedTo = Set.empty
             Payments = Set.empty
@@ -58,6 +62,7 @@ module Fold =
     | Raised state ->
       match event with
       | InvoiceRaised _ as e -> failwithf "Unexpected %A" e
+      | InvoiceNumbered data -> Raised { state with InvoiceNumber = Some data.InvoiceNumber }
       | InvoiceEmailed r -> Raised { state with EmailedTo = state.EmailedTo |> Set.add r.Recipient }
       | PaymentReceived p ->
         Raised
@@ -79,6 +84,14 @@ module Decisions =
     // since the Fold will already be in the state that this command should put it in
     | Fold.Raised state when state.Amount = data.Amount && state.Payer = data.Payer -> []
     | Fold.Raised _ -> failwith "Invoice is already raised"
+    | Fold.Finalized _ -> failwith "Invoice is finalized"
+
+  let number invoiceNumber state =
+    match state with
+    | Fold.Raised { InvoiceNumber = None } -> [Events.InvoiceNumbered {InvoiceNumber = invoiceNumber}]
+    | Fold.Raised { InvoiceNumber = Some n } when n = invoiceNumber -> []
+    | Fold.Raised { InvoiceNumber = Some n } -> failwithf "Invoice is already numbered with a different number %d" n
+    | Fold.Initial -> failwith "Invoice not found"
     | Fold.Finalized _ -> failwith "Invoice is finalized"
 
   let private hasSentEmailToRecipient recipient (state: Fold.InvoiceState) =
@@ -114,6 +127,7 @@ and [<Measure>] invoiceId
 module InvoiceId =
   let inline ofGuid (g: Guid) : InvoiceId = %g
   let inline parse (s: string) = Guid.Parse s |> ofGuid
+  let (|Parse|) = parse
   let inline toGuid (id: InvoiceId) : Guid = %id
   // We choose the dashless N format to make the distinct parts of the stream's ID
   // easier for humans to read
@@ -125,7 +139,7 @@ let Category = "Invoice"
 let streamId = Equinox.StreamId.gen InvoiceId.toString
 
 type InvoiceModel =
-  { InvoiceNumber: int
+  { InvoiceNumber: int option
     Amount: decimal
     Payer: string
     EmailedTo: string array
@@ -150,6 +164,10 @@ type Service internal (resolve: InvoiceId -> Equinox.Decider<Events.Event, Fold.
   member _.Raise(id, data) =
     let decider = resolve id
     decider.Transact(Decisions.raiseInvoice data)
+
+  member _.Number(id, data) =
+    let decider = resolve id
+    decider.Transact(Decisions.number data)
 
   member _.RecordEmailReceipt(id, data) =
     let decider = resolve id
