@@ -50,9 +50,9 @@ type CheckpointStore(service: CheckpointService, consumerGroup, defaultCheckpoin
 
         let! pos =
           match maybePos, establishOrigin with
-          | Some pos, _ -> async.Return (Position.parse pos)
+          | Some pos, _ -> async { return  Position.parse pos }
           | None, Some f -> f
-          | None, None -> async.Return Position.initial
+          | None, None -> async { return Position.initial }
 
         return struct (defaultCheckpointFrequency, pos)
       }

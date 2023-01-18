@@ -1,7 +1,5 @@
 module Invoice
 
-open TypeShape.Core.Core
-
 module Events =
   type InvoiceRaised =
     { Payer: string

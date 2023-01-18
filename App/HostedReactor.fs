@@ -5,7 +5,7 @@ open Microsoft.Extensions.Hosting
 open Propulsion.Internal
 open Propulsion.MessageDb
 
-type HostedReactor(connectionString, log, service: InvoiceNumberingReactor.Service, checkpointService: CheckpointStore.CheckpointService) =
+type HostedReactor internal (connectionString, log, service: InvoiceNumberingReactor.Service, checkpointService: CheckpointStore.CheckpointService) =
   inherit BackgroundService()
 
   let stats =
@@ -14,11 +14,11 @@ type HostedReactor(connectionString, log, service: InvoiceNumberingReactor.Servi
         member _.HandleExn(log, x) = () }
 
   [<Literal>]
-  let groupName = "InvoiceNumberingReactor"
+  let GroupName = "InvoiceNumberingReactor"
 
   let categories = [| Invoice.Category |]
 
-  let checkpoints = CheckpointStore.CheckpointStore(checkpointService, groupName, TimeSpan.FromSeconds 10)
+  let checkpoints = CheckpointStore.CheckpointStore(checkpointService, GroupName, TimeSpan.FromSeconds 10)
   let maxReadAhead = 100
   let maxConcurrentStreams = 2
 

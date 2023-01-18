@@ -24,30 +24,52 @@ let readUrl =
   Environment.tryGetEnv "MESSAGE_DB_REPLICA_URL" |> Option.defaultValue writeUrl
 
 let connection = MessageDbClient(writeUrl, readUrl)
-let context = MessageDbContext(connection, 100)
+let context = MessageDbContext(connection)
 let caching = CachingStrategy.SlidingWindow(cache, TimeSpan.FromMinutes(20))
 
-let service =
-  MessageDbCategory(context, Invoice.Events.codec, Invoice.Fold.fold, Invoice.Fold.initial, caching)
-  |> Equinox.Decider.resolve log
-  |> Invoice.create
+type Services() =
+  static member Create(context, codec, fold, initial, ?access) =
+    MessageDbCategory(context, codec, fold, initial, caching, ?access = access)
 
-let numberService =
-  let access = AccessStrategy.AdjacentSnapshots(InvoiceNumbering.Fold.snapshotEventType, InvoiceNumbering.Fold.toSnapshot)
-  MessageDbCategory(context, InvoiceNumbering.Events.codec, InvoiceNumbering.Fold.fold, InvoiceNumbering.Fold.initial, caching, access)
-  |> Equinox.Decider.resolve log
-  |> InvoiceNumbering.create
+  static member InvoiceService(context) =
+    let codec = Invoice.Events.codec
+    let fold, initial = Invoice.Fold.fold, Invoice.Fold.initial
+    Services.Create(context, codec, fold, initial)
+    |> Equinox.Decider.resolve log
+    |> Invoice.create
 
-let reactorService = InvoiceNumberingReactor.Service(numberService, service)
-let checkpointService =
-  MessageDbCategory(context, CheckpointStore.Events.codec, CheckpointStore.Fold.fold, CheckpointStore.Fold.initial, caching, access = AccessStrategy.LatestKnownEvent)
-  |> Equinox.Decider.resolve log
-  |> CheckpointStore.create
+  static member InvoiceNumberService(context) =
+    let codec = InvoiceNumbering.Events.codec
+    let fold, initial = InvoiceNumbering.Fold.fold, InvoiceNumbering.Fold.initial
+    let snapshot = InvoiceNumbering.Fold.snapshotEventType, InvoiceNumbering.Fold.toSnapshot
+    let access = AccessStrategy.AdjacentSnapshots snapshot
+    Services.Create(context, codec, fold, initial, access)
+    |> Equinox.Decider.resolve log
+    |> InvoiceNumbering.create
 
+  static member InvoiceNumberReactorService(context) =
+    let invoiceService = Services.InvoiceService(context)
+    let numberService = Services.InvoiceNumberService(context)
+    InvoiceNumberingReactor.Service(numberService, invoiceService)
+
+  static member CheckpointService(context) =
+    let codec = CheckpointStore.Events.codec
+    let fold, initial = CheckpointStore.Fold.fold, CheckpointStore.Fold.initial
+    let access = AccessStrategy.LatestKnownEvent
+    Services.Create(context, codec, fold, initial, access)
+    |> Equinox.Decider.resolve log
+    |> CheckpointStore.create
+
+  static member HostedReactor(context) =
+    let reactorService = Services.InvoiceNumberReactorService(context)
+    let checkpointService = Services.CheckpointService(context)
+    new HostedReactor.HostedReactor(readUrl, log, reactorService, checkpointService)
 
 let builder = WebApplication.CreateBuilder()
-builder.Services.AddHostedService(fun _ -> new HostedReactor.HostedReactor(readUrl, log, reactorService, checkpointService)) |> ignore
+builder.Services.AddHostedService(fun _ -> Services.HostedReactor(context)) |> ignore
 let app = builder.Build()
+
+let service = Services.InvoiceService(context)
 
 app.MapPost("/", Func<_, _>(fun body -> task {
   let id = Guid.NewGuid() |> Invoice.InvoiceId.ofGuid
