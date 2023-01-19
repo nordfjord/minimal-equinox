@@ -51,11 +51,8 @@ let ``An invoice number is reserved`` (NonEmptySet ids) =
     let source, invoiceService = makeServices ()
     use _ = source.Start()
 
-    do!
-      ids
-      |> Seq.map (fun id -> invoiceService.Raise(id, { Payer = "1"; Amount = 33m }))
-      |> Async.Sequential
-      |> Async.Ignore<unit array>
+    for id in ids do
+      do! invoiceService.Raise(id, { Payer = "1"; Amount = 33m })
 
     do! source.Monitor.AwaitCompletion()
 
