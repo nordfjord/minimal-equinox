@@ -1,4 +1,4 @@
-module Tests
+module InvoiceNumbering.Tests
 
 open FsCheck.Xunit
 open Swensen.Unquote

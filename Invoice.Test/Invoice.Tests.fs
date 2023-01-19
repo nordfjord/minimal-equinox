@@ -1,6 +1,5 @@
-module Tests
+module Invoice.Tests
 
-open Invoice
 open Swensen.Unquote
 open FsCheck.Xunit
 open FsCodec.Core

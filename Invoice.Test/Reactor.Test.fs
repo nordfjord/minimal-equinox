@@ -1,6 +1,5 @@
 module Reactor.Test
 
-open System
 open FsCheck
 open FsCheck.Xunit
 open Swensen.Unquote

@@ -6,13 +6,17 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Tests.fs" />
+    <Compile Include="Invoice.Tests.fs" />
+    <Compile Include="InvoiceNumbering.Tests.fs" />
+    <Compile Include="Reactor.Test.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FsCheck" Version="3.0.0-beta2" />
     <PackageReference Include="FsCheck.Xunit" Version="3.0.0-beta2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.2" />
+    <PackageReference Include="Propulsion" Version="3.0.0-beta.6" />
+    <PackageReference Include="Propulsion.MemoryStore" Version="3.0.0-beta.6" />
     <PackageReference Include="Unquote" Version="6.1.0" />
     <PackageReference Include="xunit" Version="2.4.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">

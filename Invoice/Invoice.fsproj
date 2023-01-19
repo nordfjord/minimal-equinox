@@ -6,7 +6,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Include="Domain.fs" />
+      <Compile Include="Invoice.fs" />
+      <Compile Include="InvoiceNumbering.fs" />
+      <Compile Include="Reactor.fs" />
     </ItemGroup>
 
     <ItemGroup>
@@ -14,6 +16,7 @@
       <PackageReference Include="FsCodec" Version="3.0.0-rc.9" />
       <PackageReference Include="FsCodec.SystemTextJson" Version="3.0.0-rc.9" />
       <PackageReference Include="FSharp.UMX" Version="1.1.0" />
+      <PackageReference Include="Propulsion" Version="3.0.0-beta.6" />
       <PackageReference Include="TypeShape" Version="10.0.0" />
     </ItemGroup>
 
