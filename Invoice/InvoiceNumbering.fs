@@ -38,13 +38,22 @@ module Fold =
 module Decide =
   open Fold
 
+  // Some decisions return results. Equinox's Transact methods allow you to return
+  // either a list of events, or a ('result * 'event list) tuple.
+  // This is one reason why I advocated against the Command DU pattern in
+  // the previous post. By abandoning the DU we relieve ourselves of the hardships
+  // of having to fit every possible return value into a `decide` function
   let reserve reservedFor state =
     match Map.tryFind reservedFor state.allocated with
+    // If we've not reserved a number for this invoice
+    // we get the next number and append an event
     | None ->
       state.next,
       [ Events.InvoiceNumberReserved
           {| invoiceNumber = state.next
              reservedFor = reservedFor |} ]
+    // If we've already reserved a number for this invoice
+    // we return its number and append no events
     | Some n -> n, []
 
 [<Literal>]
