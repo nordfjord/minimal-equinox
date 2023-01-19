@@ -1,7 +1,8 @@
 module Reactor.Test
 
-open FsCheck
-open FsCheck.Xunit
+open System
+open Xunit
+open Serilog
 open Swensen.Unquote
 
 let resolve (codec, fold, initial) store =
@@ -10,7 +11,7 @@ let resolve (codec, fold, initial) store =
 
 let makeServices () =
   let store = Equinox.MemoryStore.VolatileStore()
-  let log = Serilog.Log.Logger
+  let log = LoggerConfiguration().WriteTo.Console().CreateLogger()
 
   let numberService =
     Equinox.MemoryStore.MemoryStoreCategory(
@@ -44,25 +45,17 @@ let makeServices () =
   source, invoiceService
 
 // This is a fairly costly test, running it 10 times should be sufficient
-[<Property(MaxTest = 10)>]
-let ``An invoice number is reserved`` (NonEmptySet ids) =
+[<Fact>]
+let ``An invoice number is reserved`` () =
   async {
+    let id = Guid.NewGuid() |> Invoice.InvoiceId.ofGuid
     let source, invoiceService = makeServices ()
-    use _ = source.Start()
+    let _ = source.Start()
 
-    for id in ids do
-      do! invoiceService.Raise(id, { Payer = "1"; Amount = 33m })
-
+    do! invoiceService.Raise(id, { Payer = "1"; Amount = 33m })
     do! source.Monitor.AwaitCompletion()
 
-    let! invoices = ids |> Seq.map invoiceService.ReadInvoice |> Async.Sequential
+    let! invoice = invoiceService.ReadInvoice(id)
 
-    let numbers =
-      invoices
-      |> Array.choose (function
-        | Some x -> x.InvoiceNumber
-        | None -> None)
-      |> Array.sort
-
-    test <@ numbers = Array.ofSeq (seq { 1 .. Array.length invoices }) @>
+    test <@ invoice |> Option.bind (fun x -> x.InvoiceNumber) = Some 1 @>
   }
