@@ -2,6 +2,11 @@ module InvoiceNumberingReactor
 
 open System
 
+type Stats(log, statsInterval, stateInterval) =
+  inherit Propulsion.Streams.Stats<unit>(log, statsInterval, stateInterval)
+  override _.HandleOk _ = ()
+  override _.HandleExn(log, exn) = log.Information(exn, "Unhandled")
+
 type Service(numberService: InvoiceNumbering.Service, invoiceService: Invoice.Service) =
   member _.Handle(struct (streamName, events)) =
     async {
@@ -19,10 +24,7 @@ type Service(numberService: InvoiceNumbering.Service, invoiceService: Invoice.Se
     }
 
   member this.Sink(log) =
-    let stats =
-      { new Propulsion.Streams.Stats<_>(log, TimeSpan.FromMinutes 1, TimeSpan.FromMinutes 1) with
-          member _.HandleOk x = ()
-          member _.HandleExn(log, x) = () }
+    let stats = Stats(log, TimeSpan.FromMinutes 1, TimeSpan.FromMinutes 1)
 
     Propulsion.Streams.Default.Config.Start(
       log,
