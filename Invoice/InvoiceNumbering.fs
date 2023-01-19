@@ -20,6 +20,18 @@ module Fold =
     { next: int
       allocated: Map<Invoice.InvoiceId, int> }
 
+  // We're dealing with an ever growing stream whose purpose is to
+  // 1. Dole out invoice numbers
+  // 2. Remember which numbers were allocated for long enough to provide idempotency
+  //
+  // The odds of us retrying a reservation for an invoice 100 numbers from the head are vanishingly
+  // small. We accept that risk to reduce our memory and storage footprint
+  let maximumRememberedNumbers = 100
+
+  let shrink next allocated =
+    let threshold = next - maximumRememberedNumbers
+    Map.filter (fun _ n -> n >= threshold) allocated
+
   let initial: State = { next = 1; allocated = Map.empty }
 
   let evolve state event =
@@ -29,9 +41,10 @@ module Fold =
         allocated = data.allocated }
     | InvoiceNumberReserved data ->
       { next = data.invoiceNumber + 1
-        allocated = Map.add data.reservedFor data.invoiceNumber state.allocated }
+        allocated = Map.add data.reservedFor data.invoiceNumber state.allocated |> shrink state.next }
 
   let fold: State -> Event seq -> State = Seq.fold evolve
+
   let toSnapshot s = Snapshotted {| next = s.next; allocated = s.allocated |}
   let snapshotEventType = nameof Snapshotted
 
