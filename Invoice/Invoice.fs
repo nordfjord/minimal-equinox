@@ -185,3 +185,10 @@ type Service internal (resolve: InvoiceId -> Equinox.Decider<Events.Event, Fold.
     decider.Query(Queries.summary)
 
 let create resolve = Service(streamId >> resolve Category)
+
+let createMem store log =
+  let fold, initial = Fold.fold, Fold.initial
+  let codec = Events.codec
+  Equinox.MemoryStore.MemoryStoreCategory(store, codec, fold, initial)
+  |> Equinox.Decider.resolve log
+  |> create

@@ -1,5 +1,6 @@
 module CheckpointStore
 
+open System.Threading.Tasks
 open Equinox
 open Propulsion.Feed
 
@@ -41,18 +42,19 @@ let create resolve = CheckpointService(resolve)
 
 type CheckpointStore(service: CheckpointService, consumerGroup, defaultCheckpointFrequency) =
   interface IFeedCheckpointStore with
-    member this.Commit(source, tranche, pos) =
-        service.SetCheckpoint(source, tranche, consumerGroup, Position.toInt64 pos)
+    member this.Commit(source, tranche, pos, ct) =
+        Async.StartImmediateAsTask(service.SetCheckpoint(source, tranche, consumerGroup, Position.toInt64 pos), cancellationToken = ct)
 
-    member this.Start(source, tranche, establishOrigin) =
-      async {
-        let! maybePos = service.ReadCheckpoint(source, tranche, consumerGroup)
+    member this.Start(source, tranche, establishOrigin, ct) =
+      task {
+        let! maybePos =
+          Async.StartImmediateAsTask(service.ReadCheckpoint(source, tranche, consumerGroup), cancellationToken = ct)
 
         let! pos =
           match maybePos, establishOrigin with
-          | Some pos, _ -> async { return  Position.parse pos }
-          | None, Some f -> f
-          | None, None -> async { return Position.initial }
+          | Some pos, _ -> Task.FromResult (Position.parse pos)
+          | None, Some f -> f.Invoke ct
+          | None, None -> Task.FromResult Position.initial
 
         return struct (defaultCheckpointFrequency, pos)
       }

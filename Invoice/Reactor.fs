@@ -9,19 +9,19 @@ type Stats(log, statsInterval, stateInterval) =
 
 type Service(numberService: InvoiceNumbering.Service, invoiceService: Invoice.Service) =
 
-  member private _.Reserve(struct (invoiceId, event)) =
+  let reserve (struct (invoiceId, event)) =
     match Invoice.Events.codec.TryDecode event with
     | ValueSome(Invoice.Events.InvoiceRaised _) ->
       let reserve () = numberService.ReserveNext invoiceId
       invoiceService.Number(invoiceId, reserve)
     | _ -> async { () }
 
-  member this.Handle(struct (streamName, events)) =
-    async {
+  let handle streamName events ct =
+    task {
       match streamName with
       | FsCodec.StreamName.CategoryAndId(Invoice.Category, Invoice.InvoiceId.Parse invoiceId) ->
         for event in events do
-          do! this.Reserve(invoiceId, event)
+          do! Async.StartImmediateAsTask(reserve (invoiceId, event), cancellationToken = ct)
       | _ -> ()
 
       return struct (Propulsion.Streams.SpanResult.AllProcessed, ())
@@ -34,7 +34,14 @@ type Service(numberService: InvoiceNumbering.Service, invoiceService: Invoice.Se
       log,
       maxReadAhead = 100,
       maxConcurrentStreams = 1,
-      handle = this.Handle,
+      handle = handle,
       stats = stats,
       statsInterval = TimeSpan.FromMinutes 1
     )
+
+
+let createMem store log =
+  let invoice = Invoice.createMem store log
+  let numbering = InvoiceNumbering.createMem store log
+
+  Service(numbering, invoice)

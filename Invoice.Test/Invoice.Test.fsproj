@@ -15,8 +15,8 @@
     <PackageReference Include="FsCheck" Version="3.0.0-beta2" />
     <PackageReference Include="FsCheck.Xunit" Version="3.0.0-beta2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.2" />
-    <PackageReference Include="Propulsion" Version="3.0.0-beta.6" />
-    <PackageReference Include="Propulsion.MemoryStore" Version="3.0.0-beta.6" />
+    <PackageReference Include="Propulsion" Version="3.0.0-rc.2" />
+    <PackageReference Include="Propulsion.MemoryStore" Version="3.0.0-rc.2" />
     <PackageReference Include="Serilog.Sinks.Console" Version="4.1.0" />
     <PackageReference Include="Unquote" Version="6.1.0" />
     <PackageReference Include="xunit" Version="2.4.2" />

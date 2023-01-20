@@ -5,35 +5,16 @@ open Xunit
 open Serilog
 open Swensen.Unquote
 
-let resolve (codec, fold, initial) store =
+let resolve log (codec, fold, initial) store =
   Equinox.MemoryStore.MemoryStoreCategory(store, codec, fold, initial)
-  |> Equinox.Decider.resolve Serilog.Log.Logger
+  |> Equinox.Decider.resolve log
 
 let makeServices () =
   let store = Equinox.MemoryStore.VolatileStore()
   let log = LoggerConfiguration().WriteTo.Console().CreateLogger()
 
-  let numberService =
-    Equinox.MemoryStore.MemoryStoreCategory(
-      store,
-      InvoiceNumbering.Events.codec,
-      InvoiceNumbering.Fold.fold,
-      InvoiceNumbering.Fold.initial
-    )
-    |> Equinox.Decider.resolve log
-    |> InvoiceNumbering.create
-
-  let invoiceService =
-    Equinox.MemoryStore.MemoryStoreCategory(
-      store,
-      Invoice.Events.codec,
-      Invoice.Fold.fold,
-      Invoice.Fold.initial
-    )
-    |> Equinox.Decider.resolve log
-    |> Invoice.create
-
-  let reactor = InvoiceNumberingReactor.Service(numberService, invoiceService)
+  let reactor = InvoiceNumberingReactor.createMem store log
+  let invoiceService = Invoice.createMem store log
 
   let categoryF s = s = Invoice.Category
 
@@ -47,7 +28,7 @@ let makeServices () =
 // This is a fairly costly test, running it 10 times should be sufficient
 [<Fact>]
 let ``An invoice number is reserved`` () =
-  async {
+  task {
     let id = Guid.NewGuid() |> Invoice.InvoiceId.ofGuid
     let source, invoiceService = makeServices ()
     let _ = source.Start()

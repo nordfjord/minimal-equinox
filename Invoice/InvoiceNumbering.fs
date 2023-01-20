@@ -82,3 +82,10 @@ type Service(resolve: unit -> Equinox.Decider<Events.Event, Fold.State>) =
     decider.Transact(Decide.reserve reserveFor)
 
 let create resolve = Service(streamId >> resolve Category)
+
+let createMem store log =
+  let fold, initial = Fold.fold, Fold.initial
+  let codec = Events.codec
+  Equinox.MemoryStore.MemoryStoreCategory(store, codec, fold, initial)
+  |> Equinox.Decider.resolve log
+  |> create

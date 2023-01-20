@@ -5,15 +5,7 @@ open Swensen.Unquote
 
 let makeService () =
   let store = Equinox.MemoryStore.VolatileStore()
-
-  Equinox.MemoryStore.MemoryStoreCategory(
-    store,
-    InvoiceNumbering.Events.codec,
-    InvoiceNumbering.Fold.fold,
-    InvoiceNumbering.Fold.initial
-  )
-  |> Equinox.Decider.resolve Serilog.Log.Logger
-  |> InvoiceNumbering.create
+  InvoiceNumbering.createMem store Serilog.Log.Logger
 
 [<Property>]
 let ``A reserved number is not doled out to another`` (invoiceId) (ids) =
