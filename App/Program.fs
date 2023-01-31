@@ -34,34 +34,25 @@ let service =
 let builder = WebApplication.CreateBuilder()
 let app = builder.Build()
 
-let raiseInvoice body =
-  task {
-    let id = Guid.NewGuid() |> Invoice.InvoiceId.ofGuid
-    do! service.Raise(id, body)
-    return id
-  }
 
-app.MapPost("/", Func<_, _>(raiseInvoice)) |> ignore
+app.MapPost("/", Func<_, _>(fun body -> task {
+  let id = Guid.NewGuid() |> Invoice.InvoiceId.ofGuid
+  do! service.Raise(id, body)
+  return id
+})) |> ignore
 
-let finalizeInvoice id =
-  task {
-    do! service.Finalize(id)
-    return "OK"
-  }
+app.MapPost("/{id}/finalize", Func<_, _>(fun id -> task {
+  do! service.Finalize(id)
+  return "OK"
+})) |> ignore
 
-app.MapPost("/{id}/finalize", Func<_, _>(finalizeInvoice)) |> ignore
+app.MapPost("/{id}/record-payment", Func<_, _, _>(fun id payment -> task {
+  do! service.RecordPayment(id, payment)
+  return "OK"
+})) |> ignore
 
-let recordPayment id payment =
-  task {
-    do! service.RecordPayment(id, payment)
-    return "OK"
-  }
-
-app.MapPost("/{id}/record-payment", Func<_, _, _>(recordPayment)) |> ignore
-
-let readInvoice id =
-  task { return! service.ReadInvoice(id) }
-
-app.MapGet("/{id}", Func<_, _>(readInvoice)) |> ignore
+app.MapGet("/{id}", Func<_, _>(fun id -> task {
+  return! service.ReadInvoice(id)
+})) |> ignore
 
 app.Run()
