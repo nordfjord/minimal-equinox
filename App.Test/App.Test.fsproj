@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\App\eqx-blog.fsproj" />
+    <ProjectReference Include="..\App\App.fsproj" />
   </ItemGroup>
 
 </Project>
