@@ -132,8 +132,4 @@ type Service internal (resolve: InvoiceId -> Equinox.Decider<Events.Event, Fold.
     let decider = resolve id
     decider.Query(Queries.summary)
 
-  member _.ReadInvoiceAndVersion(id) =
-    let decider = resolve id
-    decider.QueryEx(fun ctx -> ctx.Version, Queries.summary ctx.State)
-
 let create resolve = Service(streamId >> resolve Category)
