@@ -13,15 +13,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9c679835-6f7e-4718-a795-8a6bcfc24787" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Domain/InvoiceNotificationEmail.fs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Domain/Types.fs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.eqx-blog/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.eqx-blog/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App.Test/App.Test.fsproj" beforeDir="false" afterPath="$PROJECT_DIR$/Domain.Test/Domain.Test.fsproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App.Test/Tests.fs" beforeDir="false" afterPath="$PROJECT_DIR$/Domain.Test/Tests.fs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/App.fsproj" beforeDir="false" afterPath="$PROJECT_DIR$/App/App.fsproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/Invoice.fs" beforeDir="false" afterPath="$PROJECT_DIR$/Domain/Invoice.fs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/App/Program.fs" beforeDir="false" afterPath="$PROJECT_DIR$/App/Program.fs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/eqx-blog.sln" beforeDir="false" afterPath="$PROJECT_DIR$/eqx-blog.sln" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App.Reactions/Program.fs" beforeDir="false" afterPath="$PROJECT_DIR$/App.Reactions/Program.fs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -53,7 +46,7 @@
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "email-reaction",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -178,7 +171,7 @@
       <option name="presentableId" value="Default" />
       <updated>1675168577120</updated>
       <workItem from="1675168578698" duration="189000" />
-      <workItem from="1689472134064" duration="6550000" />
+      <workItem from="1689472134064" duration="7866000" />
     </task>
     <servers />
   </component>

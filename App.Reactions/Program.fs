@@ -86,14 +86,13 @@ let main argv = Async.RunSynchronously(async {
   listener.ActivityStopped <- fun span ->
     match span.DisplayName with
     | "TrySync" ->
-      log.Information("{name} ({ms}ms) Count={count}", span.DisplayName, span.Duration.TotalMilliseconds,
-                      span.GetTagItem("eqx.count"))
-    | "Load" ->
-      log.Information("{name} ({ms}ms) CacheHit={cache_hit}; Count={count}; LoadMethod={load_method}",
+      log.Information("{name} ({ms}ms) count={count}; batches={batches}; stream={stream}",
                       span.DisplayName, span.Duration.TotalMilliseconds,
-                      span.GetTagItem("eqx.cache_hit"),
-                      span.GetTagItem("eqx.count"),
-                      span.GetTagItem("eqx.load_method"))
+                      span.GetTagItem("eqx.count"), span.GetTagItem("eqx.batches"), span.GetTagItem("eqx.stream_name"))
+    | "Load" ->
+      log.Information("{name} {load_method} ({ms}ms) cached={cache_hit}; count={count}; batches={batches} stream={stream}",
+                      span.DisplayName, span.GetTagItem("eqx.load_method"), span.Duration.TotalMilliseconds,
+                      span.GetTagItem("eqx.cache_hit"), span.GetTagItem("eqx.count"), span.GetTagItem("eqx.batches"), span.GetTagItem("eqx.stream_name"))
     | _ ->
       log.Information("{name} ({ms}ms)", span.DisplayName, span.Duration.TotalMilliseconds)
   ActivitySource.AddActivityListener(listener)
