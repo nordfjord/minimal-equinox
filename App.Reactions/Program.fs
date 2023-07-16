@@ -86,9 +86,9 @@ let main argv = Async.RunSynchronously(async {
   listener.ActivityStopped <- fun span ->
     match span.DisplayName with
     | "TrySync" ->
-      log.Information("{name} ({ms}ms) count={count}; batches={batches}; stream={stream}",
+      log.Information("{name} ({ms}ms) count={count}; stream={stream}; version={version}",
                       span.DisplayName, span.Duration.TotalMilliseconds,
-                      span.GetTagItem("eqx.count"), span.GetTagItem("eqx.batches"), span.GetTagItem("eqx.stream_name"))
+                      span.GetTagItem("eqx.count"), span.GetTagItem("eqx.stream_name"), span.GetTagItem("eqx.new_version"))
     | "Load" ->
       log.Information("{name} {load_method} ({ms}ms) cached={cache_hit}; count={count}; batches={batches} stream={stream}",
                       span.DisplayName, span.GetTagItem("eqx.load_method"), span.Duration.TotalMilliseconds,
