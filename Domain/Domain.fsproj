@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net7.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+  
+    <ItemGroup>
+      <PackageReference Include="Equinox" Version="4.0.0-rc.12" />
+      <PackageReference Include="FsCodec" Version="3.0.0-rc.10" />
+      <PackageReference Include="FsCodec.SystemTextJson" Version="3.0.0-rc.10" />
+      <PackageReference Include="FSharp.UMX" Version="1.1.0" />
+      <PackageReference Include="TypeShape" Version="10.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Include="Types.fs" />
+        <Compile Include="Invoice.fs" />
+        <Compile Include="InvoiceNotificationEmail.fs" />
+    </ItemGroup>
+
+</Project>

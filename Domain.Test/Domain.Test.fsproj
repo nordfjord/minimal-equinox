@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
+    <RootNamespace>App.Test</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\App\App.fsproj" />
+    <ProjectReference Include="..\Domain\Domain.fsproj" />
   </ItemGroup>
 
 </Project>
