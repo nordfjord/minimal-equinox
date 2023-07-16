@@ -1,13 +1,12 @@
 module Program
 
 open System
+open Equinox
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.Hosting
 open Equinox.MessageDb
 open Serilog
-
-module Environment =
-  let tryGetEnv = Environment.GetEnvironmentVariable >> Option.ofObj
+open Types
 
 let log = LoggerConfiguration().WriteTo.Console().CreateLogger()
 
@@ -22,13 +21,13 @@ let writeUrl =
 let readUrl =
   Environment.tryGetEnv "MESSAGE_DB_REPLICA_URL" |> Option.defaultValue writeUrl
 
-let connection = MessageDbConnector(writeUrl, readUrl).Establish()
+let connection = MessageDbClient(writeUrl, readUrl)
 let context = MessageDbContext(connection)
 let caching = CachingStrategy.SlidingWindow(cache, TimeSpan.FromMinutes(20))
 
 let service =
   MessageDbCategory(context, Invoice.Events.codec, Invoice.Fold.fold, Invoice.Fold.initial, caching)
-  |> Equinox.Decider.resolve log
+  |> Decider.resolve log
   |> Invoice.create
 
 let builder = WebApplication.CreateBuilder()
@@ -36,7 +35,7 @@ let app = builder.Build()
 
 
 app.MapPost("/", Func<_, _>(fun body -> task {
-  let id = Guid.NewGuid() |> Invoice.InvoiceId.ofGuid
+  let id = Guid.NewGuid() |> InvoiceId.ofGuid
   do! service.Raise(id, body)
   return id
 })) |> ignore

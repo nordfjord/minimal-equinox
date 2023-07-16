@@ -33,13 +33,6 @@ let ``Recording payments`` raised data =
   raises <@ [ InvoiceRaised raised; InvoiceFinalized ] => Decisions.recordPayment data @>
 
 [<Property>]
-let ``Recording email receipts`` raised data =
-  raises <@ [] => Decisions.recordEmailReceipt data @>
-  test <@ [ InvoiceRaised raised ] => Decisions.recordEmailReceipt data = [ InvoiceEmailed data ] @>
-  test <@ [ InvoiceRaised raised; InvoiceEmailed data ] => Decisions.recordEmailReceipt data = [] @>
-  raises <@ [ InvoiceRaised raised; InvoiceFinalized ] => Decisions.recordEmailReceipt data @>
-
-[<Property>]
 let ``Finalizing`` raised =
   raises <@ [] => Decisions.finalize @>
   test <@ [ InvoiceRaised raised ] => Decisions.finalize = [ InvoiceFinalized ] @>

@@ -1,5 +1,7 @@
 module Invoice
 
+open Types
+
 module Events =
   type InvoiceRaised =
     { InvoiceNumber: int
@@ -8,14 +10,8 @@ module Events =
 
   type Payment = { PaymentId: string; Amount: decimal }
 
-  type EmailReceipt =
-    { IdempotencyKey: string
-      Recipient: string
-      SentAt: System.DateTimeOffset }
-
   type Event =
     | InvoiceRaised of InvoiceRaised
-    | InvoiceEmailed of EmailReceipt
     | PaymentReceived of Payment
     | InvoiceFinalized
     // It is necessary to mark the Event DU with this interface for FsCodec
@@ -30,7 +26,6 @@ module Fold =
     { Amount: decimal
       InvoiceNumber: int
       Payer: string
-      EmailedTo: Set<string>
       Payments: Set<string>
       AmountPaid: decimal }
 
@@ -50,7 +45,6 @@ module Fold =
           { Amount = data.Amount
             InvoiceNumber = data.InvoiceNumber
             Payer = data.Payer
-            EmailedTo = Set.empty
             Payments = Set.empty
             AmountPaid = 0m }
       // We're guaranteed to not have two InvoiceRaised events and that it is the first event in the stream
@@ -58,7 +52,6 @@ module Fold =
     | Raised state ->
       match event with
       | InvoiceRaised _ as e -> failwithf "Unexpected %A" e
-      | InvoiceEmailed r -> Raised { state with EmailedTo = state.EmailedTo |> Set.add r.Recipient }
       | PaymentReceived p ->
         Raised
           { state with
@@ -81,17 +74,6 @@ module Decisions =
     | Fold.Raised _ -> failwith "Invoice is already raised"
     | Fold.Finalized _ -> failwith "Invoice is finalized"
 
-  let private hasSentEmailToRecipient recipient (state: Fold.InvoiceState) =
-    state.EmailedTo |> Set.contains recipient
-
-  let recordEmailReceipt (data: Events.EmailReceipt) state =
-    match state with
-    | Fold.Raised state when not (hasSentEmailToRecipient data.Recipient state) ->
-      [ Events.InvoiceEmailed data ]
-    | Fold.Raised _ -> []
-    | Fold.Initial -> failwith "Invoice not found"
-    | Fold.Finalized _ -> failwith "Invoice is finalized"
-
   let recordPayment (data: Events.Payment) state =
     match state with
     | Fold.Raised state when state.Payments |> Set.contains data.PaymentId -> []
@@ -108,17 +90,6 @@ module Decisions =
 open FSharp.UMX
 open System
 
-type InvoiceId = Guid<invoiceId>
-and [<Measure>] invoiceId
-
-module InvoiceId =
-  let inline ofGuid (g: Guid) : InvoiceId = %g
-  let inline parse (s: string) = Guid.Parse s |> ofGuid
-  let inline toGuid (id: InvoiceId) : Guid = %id
-  // We choose the dashless N format to make the distinct parts of the stream's ID
-  // easier for humans to read
-  let inline toString (id: InvoiceId) = (toGuid id).ToString("N")
-
 [<Literal>]
 let Category = "Invoice"
 
@@ -128,7 +99,6 @@ type InvoiceModel =
   { InvoiceNumber: int
     Amount: decimal
     Payer: string
-    EmailedTo: string array
     Finalized: bool }
 
 module InvoiceModel =
@@ -136,7 +106,6 @@ module InvoiceModel =
     { InvoiceNumber = state.InvoiceNumber
       Amount = state.Amount
       Payer = state.Payer
-      EmailedTo = state.EmailedTo |> Set.toArray
       Finalized = finalized }
 
 module Queries =
@@ -151,10 +120,6 @@ type Service internal (resolve: InvoiceId -> Equinox.Decider<Events.Event, Fold.
     let decider = resolve id
     decider.Transact(Decisions.raiseInvoice data)
 
-  member _.RecordEmailReceipt(id, data) =
-    let decider = resolve id
-    decider.Transact(Decisions.recordEmailReceipt data)
-
   member _.RecordPayment(id, data) =
     let decider = resolve id
     decider.Transact(Decisions.recordPayment data)
@@ -166,5 +131,9 @@ type Service internal (resolve: InvoiceId -> Equinox.Decider<Events.Event, Fold.
   member _.ReadInvoice(id) =
     let decider = resolve id
     decider.Query(Queries.summary)
+
+  member _.ReadInvoiceAndVersion(id) =
+    let decider = resolve id
+    decider.QueryEx(fun ctx -> ctx.Version, Queries.summary ctx.State)
 
 let create resolve = Service(streamId >> resolve Category)

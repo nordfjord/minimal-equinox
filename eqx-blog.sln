@@ -3,9 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "App.Test", "App.Test\App.Test.fsproj", "{1C0EC75A-9703-464C-932C-92EC9B2209A9}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Domain.Test", "Domain.Test\Domain.Test.fsproj", "{1C0EC75A-9703-464C-932C-92EC9B2209A9}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "App", "App\App.fsproj", "{3F6D0D81-C033-4A19-A4B2-1675B7BF9DFA}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Domain", "Domain\Domain.fsproj", "{3B029F49-0A1A-478C-9BBA-659ACCD5EC6C}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "App.Reactions", "App.Reactions\App.Reactions.fsproj", "{19F8F7F1-3D29-424D-8CD1-FC2DF61B294A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,5 +28,13 @@ Global
 		{3F6D0D81-C033-4A19-A4B2-1675B7BF9DFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3F6D0D81-C033-4A19-A4B2-1675B7BF9DFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3F6D0D81-C033-4A19-A4B2-1675B7BF9DFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B029F49-0A1A-478C-9BBA-659ACCD5EC6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B029F49-0A1A-478C-9BBA-659ACCD5EC6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B029F49-0A1A-478C-9BBA-659ACCD5EC6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B029F49-0A1A-478C-9BBA-659ACCD5EC6C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19F8F7F1-3D29-424D-8CD1-FC2DF61B294A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19F8F7F1-3D29-424D-8CD1-FC2DF61B294A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19F8F7F1-3D29-424D-8CD1-FC2DF61B294A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19F8F7F1-3D29-424D-8CD1-FC2DF61B294A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
